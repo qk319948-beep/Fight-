@@ -1,0 +1,6 @@
+{
+  "name": "Free Fire 2D Battle Royale",
+  "description": "A complete 2D Free Fire style battle royale game with parachuting bots, shrinking safe zone, lootable weapons, mobile controls, and BOOYAH victory screen.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

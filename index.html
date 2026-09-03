@@ -1,0 +1,2214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Free Fire 2D Battle Royale</title>
+  <meta name="description" content="Free Fire style 2D cartoon battle royale with parachute drop, weapons, safe zone, bots, and BOOYAH screen." />
+  <style>
+    /* ========================================================
+       FREE FIRE 2D BATTLE ROYALE - STYLES
+       ======================================================== */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0d1117;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #fff;
+    }
+    #game-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+    canvas#gameCanvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #38a169;
+    }
+
+    /* Top HUD (Alive, Kills, Safe Zone timer) */
+    .top-bar {
+      position: absolute;
+      top: 12px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 0 16px;
+      pointer-events: none;
+      z-index: 20;
+    }
+    .hud-badge {
+      background: rgba(15, 23, 42, 0.85);
+      border: 2px solid #f59e0b;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .hud-badge.alive {
+      border-color: #10b981;
+      color: #a7f3d0;
+    }
+    .hud-badge.kills {
+      border-color: #ef4444;
+      color: #fca5a5;
+    }
+    .hud-badge.zone {
+      border-color: #3b82f6;
+      color: #93c5fd;
+      font-size: 13px;
+    }
+
+    /* Minimap (Top Right) */
+    .minimap-wrapper {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      width: 130px;
+      height: 130px;
+      border: 3px solid #f59e0b;
+      border-radius: 12px;
+      background: rgba(10, 15, 25, 0.88);
+      overflow: hidden;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+      pointer-events: auto;
+      z-index: 25;
+    }
+    #miniCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Kill Feed */
+    #kill-feed {
+      position: absolute;
+      top: 60px;
+      left: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      pointer-events: none;
+      z-index: 20;
+    }
+    .kill-msg {
+      background: rgba(0, 0, 0, 0.75);
+      border-left: 3px solid #ef4444;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #f3f4f6;
+      animation: fadeInOut 4s forwards;
+    }
+    @keyframes fadeInOut {
+      0% { opacity: 0; transform: translateX(-10px); }
+      10% { opacity: 1; transform: translateX(0); }
+      80% { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-5px); }
+    }
+
+    /* Parachute drop overlay */
+    #drop-banner {
+      position: absolute;
+      top: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(245, 158, 11, 0.95);
+      color: #111827;
+      padding: 6px 20px;
+      border-radius: 20px;
+      font-weight: 900;
+      font-size: 15px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 16px rgba(245, 158, 11, 0.6);
+      pointer-events: none;
+      z-index: 25;
+      display: none;
+    }
+
+    /* Bottom Player HUD */
+    .bottom-hud {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+      z-index: 20;
+    }
+    .health-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 260px;
+    }
+    .health-bar-bg {
+      width: 100%;
+      height: 18px;
+      background: rgba(17, 24, 39, 0.85);
+      border: 2px solid #374151;
+      border-radius: 10px;
+      overflow: hidden;
+      position: relative;
+    }
+    .health-bar-fill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #10b981, #059669);
+      transition: width 0.15s ease-out;
+    }
+    .health-text {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      top: 0;
+      left: 0;
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 16px;
+      color: #fff;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    }
+
+    /* Weapons slots bar */
+    .weapons-bar {
+      display: flex;
+      gap: 8px;
+      pointer-events: auto;
+    }
+    .weapon-slot {
+      background: rgba(17, 24, 39, 0.85);
+      border: 2px solid #4b5563;
+      border-radius: 8px;
+      padding: 6px 12px;
+      min-width: 90px;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+      transition: all 0.15s;
+    }
+    .weapon-slot.active {
+      border-color: #f59e0b;
+      background: rgba(30, 41, 59, 0.95);
+      transform: scale(1.05);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+    }
+    .weapon-slot .w-name {
+      font-weight: 800;
+      font-size: 12px;
+      color: #fbbf24;
+    }
+    .weapon-slot .w-ammo {
+      font-size: 11px;
+      font-weight: 700;
+      color: #d1d5db;
+    }
+
+    /* Loot prompt */
+    #loot-prompt {
+      position: absolute;
+      bottom: 115px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(245, 158, 11, 0.95);
+      color: #111;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 13px;
+      display: none;
+      pointer-events: auto;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      z-index: 25;
+    }
+
+    /* Mobile Controls */
+    .mobile-controls {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 22;
+    }
+    #joystick-zone {
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      width: 140px;
+      height: 140px;
+      pointer-events: auto;
+    }
+    .joystick-base {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      position: relative;
+    }
+    .joystick-knob {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(245, 158, 11, 0.85);
+      border: 2px solid #fff;
+      position: absolute;
+      top: 35px;
+      left: 35px;
+      transform: translate(0, 0);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .action-buttons {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: flex-end;
+      pointer-events: none;
+    }
+    .btn-action {
+      pointer-events: auto;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      border: 2px solid #fff;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      cursor: pointer;
+      user-select: none;
+    }
+    .btn-fire {
+      width: 76px;
+      height: 76px;
+      background: radial-gradient(circle, #ef4444, #b91c1c);
+      font-size: 15px;
+      color: #fff;
+    }
+    .btn-fire:active {
+      transform: scale(0.92);
+      background: #dc2626;
+    }
+    .btn-sub-row {
+      display: flex;
+      gap: 12px;
+    }
+    .btn-reload {
+      width: 50px;
+      height: 50px;
+      background: #3b82f6;
+      font-size: 11px;
+      color: #fff;
+    }
+    .btn-heal {
+      width: 50px;
+      height: 50px;
+      background: #10b981;
+      font-size: 11px;
+      color: #fff;
+    }
+
+    /* Modal Screens (BOOYAH & Defeated) */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(5, 10, 20, 0.85);
+      backdrop-filter: blur(5px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .booyah-title {
+      font-size: 64px;
+      font-weight: 900;
+      color: #facc15;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      text-shadow: 0 0 20px #eab308, 0 4px 10px #713f12;
+      animation: pulse 1s infinite alternate ease-in-out;
+      margin-bottom: 8px;
+    }
+    .defeat-title {
+      font-size: 52px;
+      font-weight: 900;
+      color: #ef4444;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      text-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+      margin-bottom: 8px;
+    }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.08); }
+    }
+    .stats-card {
+      background: rgba(17, 24, 39, 0.95);
+      border: 3px solid #f59e0b;
+      border-radius: 16px;
+      padding: 20px 30px;
+      width: 320px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+      margin-bottom: 20px;
+    }
+    .stats-card.defeat {
+      border-color: #ef4444;
+    }
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #d1d5db;
+    }
+    .stats-row span:last-child {
+      color: #facc15;
+      font-weight: 900;
+    }
+    .btn-replay {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #111827;
+      font-weight: 900;
+      font-size: 18px;
+      padding: 12px 34px;
+      border-radius: 30px;
+      border: 2px solid #fff;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5);
+      transition: transform 0.15s;
+    }
+    .btn-replay:hover {
+      transform: scale(1.05);
+    }
+    .btn-export {
+      margin-top: 14px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #9ca3af;
+      font-size: 12px;
+      border: 1px solid #4b5563;
+      padding: 6px 14px;
+      border-radius: 16px;
+      cursor: pointer;
+    }
+    .btn-export:hover {
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+    }
+
+    /* Start screen */
+    #start-screen {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, #1e293b, #0f172a);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 90;
+      padding: 20px;
+      text-align: center;
+    }
+    .logo-badge {
+      background: #f59e0b;
+      color: #111827;
+      font-weight: 900;
+      font-size: 14px;
+      padding: 4px 16px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+    }
+    .game-logo {
+      font-size: 46px;
+      font-weight: 900;
+      color: #fbbf24;
+      text-shadow: 0 4px 16px rgba(251, 191, 36, 0.4);
+      margin-bottom: 8px;
+      letter-spacing: 2px;
+    }
+    .instruction-list {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 16px 22px;
+      margin: 18px 0;
+      text-align: left;
+      font-size: 13px;
+      color: #cbd5e1;
+      max-width: 380px;
+      line-height: 1.6;
+    }
+    .instruction-list b {
+      color: #facc15;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <!-- Main Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Top Status Bar -->
+    <div class="top-bar">
+      <div style="display: flex; gap: 8px;">
+        <div class="hud-badge alive" id="badge-alive">👥 ALIVE: 11</div>
+        <div class="hud-badge kills" id="badge-kills">💀 KILLS: 0</div>
+      </div>
+      <div class="hud-badge zone" id="badge-zone">⏱️ SAFE ZONE: 30s</div>
+    </div>
+
+    <!-- Minimap -->
+    <div class="minimap-wrapper">
+      <canvas id="miniCanvas" width="130" height="130"></canvas>
+    </div>
+
+    <!-- Kill Feed -->
+    <div id="kill-feed"></div>
+
+    <!-- Parachute Banner -->
+    <div id="drop-banner">🪂 PARACHUTE DROP - LAND SAFELY!</div>
+
+    <!-- Loot Prompt -->
+    <div id="loot-prompt">Pick up AR [F]</div>
+
+    <!-- Bottom HUD (Health & Weapons) -->
+    <div class="bottom-hud">
+      <div class="health-container">
+        <div class="health-bar-bg">
+          <div class="health-bar-fill" id="health-fill"></div>
+          <div class="health-text" id="health-text">HP 100 / 100</div>
+        </div>
+      </div>
+
+      <div class="weapons-bar">
+        <div class="weapon-slot active" id="slot-0" onclick="selectSlot(0)">
+          <div class="w-name" id="slot-0-name">Fists</div>
+          <div class="w-ammo" id="slot-0-ammo">∞</div>
+        </div>
+        <div class="weapon-slot" id="slot-1" onclick="selectSlot(1)">
+          <div class="w-name" id="slot-1-name">Empty</div>
+          <div class="w-ammo" id="slot-1-ammo">--</div>
+        </div>
+        <div class="weapon-slot" id="slot-2" onclick="selectSlot(2)">
+          <div class="w-name" id="slot-2-name">Empty</div>
+          <div class="w-ammo" id="slot-2-ammo">--</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Touch Controls -->
+    <div class="mobile-controls">
+      <div id="joystick-zone">
+        <div class="joystick-base" id="joy-base">
+          <div class="joystick-knob" id="joy-knob"></div>
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <div class="btn-sub-row">
+          <button class="btn-action btn-heal" id="btn-heal">MED</button>
+          <button class="btn-action btn-reload" id="btn-reload">RELOAD</button>
+        </div>
+        <button class="btn-action btn-fire" id="btn-fire">FIRE</button>
+      </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="start-screen">
+      <div class="logo-badge">FREE FIRE 2D LITE</div>
+      <h1 class="game-logo">BATTLE ROYALE</h1>
+      <div class="instruction-list">
+        🎮 <b>Controls:</b> W, A, S, D or Mobile Joystick to Move<br>
+        🎯 <b>Aim & Shoot:</b> Mouse Click or Touch Aim + FIRE button<br>
+        🔫 <b>Weapons:</b> Pistol, Shotgun, AR scattered on island<br>
+        📦 <b>Action:</b> F or Tap Prompt to Pick up loot, R to Reload<br>
+        ⚡ <b>Goal:</b> 10 Bots drop with you. Survive inside the safe zone & win!
+      </div>
+      <button class="btn-replay" id="btn-start" onclick="startGame()">DROP TO ISLAND</button>
+      <button class="btn-export" onclick="downloadSingleFile()">💾 Download Single HTML Game</button>
+    </div>
+
+    <!-- Victory "BOOYAH!" Modal -->
+    <div class="modal-overlay" id="victory-modal">
+      <div class="booyah-title">BOOYAH!</div>
+      <div class="stats-card">
+        <div class="stats-row"><span>RANK</span><span>#1 CHAMPION</span></div>
+        <div class="stats-row"><span>KILLS</span><span id="win-kills">0</span></div>
+        <div class="stats-row"><span>DAMAGE DEALT</span><span id="win-damage">0</span></div>
+        <div class="stats-row"><span>SURVIVAL TIME</span><span id="win-time">0m 0s</span></div>
+      </div>
+      <button class="btn-replay" onclick="resetGame()">PLAY AGAIN</button>
+      <button class="btn-export" onclick="downloadSingleFile()">💾 Download Single HTML Game</button>
+    </div>
+
+    <!-- Defeat Modal -->
+    <div class="modal-overlay" id="defeat-modal">
+      <div class="defeat-title">ELIMINATED</div>
+      <div class="stats-card defeat">
+        <div class="stats-row"><span>YOUR RANK</span><span id="lose-rank">#0</span></div>
+        <div class="stats-row"><span>KILLS</span><span id="lose-kills">0</span></div>
+        <div class="stats-row"><span>DAMAGE DEALT</span><span id="lose-damage">0</span></div>
+        <div class="stats-row"><span>SURVIVAL TIME</span><span id="lose-time">0m 0s</span></div>
+      </div>
+      <button class="btn-replay" onclick="resetGame()">TRY AGAIN</button>
+      <button class="btn-export" onclick="downloadSingleFile()">💾 Download Single HTML Game</button>
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================================================
+       FREE FIRE 2D BATTLE ROYALE - CORE SCRIPT
+       All game systems: Weapons, Map, Bot AI, Safe Zone, Particle FX, Web Audio
+       ========================================================================== */
+
+    // --------------------------------------------------------------------------
+    // 1. CONFIGURATION: WEAPONS DEFINITION
+    // You can edit weapon stats (damage, ammo, fire rate, bullet speed, spread)
+    // --------------------------------------------------------------------------
+    const WEAPON_CONFIG = {
+      fist: {
+        name: 'Fists',
+        damage: 18,
+        magSize: Infinity,
+        fireRate: 400,    // ms between attacks
+        range: 65,
+        spread: 0,
+        speed: 0,
+        color: '#fbbf24',
+        type: 'melee',
+        pellets: 1
+      },
+      pistol: {
+        name: 'Pistol USP',
+        damage: 24,
+        magSize: 12,
+        fireRate: 280,
+        reloadTime: 1200,
+        range: 480,
+        spread: 0.05,
+        speed: 15,
+        color: '#f59e0b',
+        type: 'gun',
+        pellets: 1
+      },
+      shotgun: {
+        name: 'M1014 Shotgun',
+        damage: 15,       // Per pellet (x5 = 75 damage max)
+        magSize: 6,
+        fireRate: 750,
+        reloadTime: 2000,
+        range: 320,
+        spread: 0.28,
+        speed: 14,
+        color: '#ef4444',
+        type: 'gun',
+        pellets: 5
+      },
+      ar: {
+        name: 'AK47 AR',
+        damage: 32,
+        magSize: 30,
+        fireRate: 110,
+        reloadTime: 1700,
+        range: 680,
+        spread: 0.08,
+        speed: 18,
+        color: '#3b82f6',
+        type: 'gun',
+        pellets: 1
+      }
+    };
+
+    // --------------------------------------------------------------------------
+    // 2. CONFIGURATION: MAP & BUILDINGS
+    // World size is 2600 x 2600. Island is centered with water surroundings.
+    // --------------------------------------------------------------------------
+    const MAP_SIZE = 2600;
+    const ISLAND_RADIUS = 1150;
+
+    // Static buildings & obstacles (x, y, width, height, color, roofType)
+    const BUILDINGS = [
+      // Central Clock Tower / Factory
+      { x: 1200, y: 1200, w: 200, h: 200, color: '#94a3b8', roof: '#b91c1c', label: 'Factory' },
+      // North Warehouse
+      { x: 1180, y: 700, w: 240, h: 140, color: '#64748b', roof: '#0369a1', label: 'Hangar' },
+      // South Village
+      { x: 1000, y: 1700, w: 140, h: 120, color: '#cbd5e1', roof: '#b45309', label: 'House' },
+      { x: 1250, y: 1720, w: 150, h: 130, color: '#cbd5e1', roof: '#047857', label: 'Villa' },
+      { x: 1470, y: 1690, w: 130, h: 140, color: '#cbd5e1', roof: '#b45309', label: 'House' },
+      // West Outpost
+      { x: 650, y: 1150, w: 160, h: 140, color: '#64748b', roof: '#475569', label: 'Bunker' },
+      { x: 670, y: 1340, w: 130, h: 110, color: '#cbd5e1', roof: '#b45309', label: 'Cabin' },
+      // East Military Camp
+      { x: 1750, y: 1120, w: 180, h: 140, color: '#64748b', roof: '#15803d', label: 'Barracks' },
+      { x: 1780, y: 1320, w: 150, h: 130, color: '#64748b', roof: '#15803d', label: 'Armory' },
+      // North-West Ruins
+      { x: 750, y: 720, w: 120, h: 120, color: '#94a3b8', roof: '#ca8a04', label: 'Shrine' },
+      // South-East Complex
+      { x: 1680, y: 1750, w: 160, h: 150, color: '#94a3b8', roof: '#4338ca', label: 'Depot' }
+    ];
+
+    // Procedural trees & rocks for cover
+    const NATURE_OBSTACLES = [];
+    (function generateNature() {
+      // Seeded random nature elements
+      for (let i = 0; i < 90; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const dist = Math.random() * (ISLAND_RADIUS - 100);
+        const x = MAP_SIZE / 2 + Math.cos(ang) * dist;
+        const y = MAP_SIZE / 2 + Math.sin(ang) * dist;
+        
+        // Avoid inside buildings
+        let overlap = false;
+        for (const b of BUILDINGS) {
+          if (x > b.x - 40 && x < b.x + b.w + 40 && y > b.y - 40 && y < b.y + b.h + 40) {
+            overlap = true; break;
+          }
+        }
+        if (!overlap) {
+          NATURE_OBSTACLES.push({
+            x, y,
+            radius: i % 4 === 0 ? 22 : 16, // Rock or Tree
+            type: i % 4 === 0 ? 'rock' : 'tree'
+          });
+        }
+      }
+    })();
+
+    // --------------------------------------------------------------------------
+    // 3. SYNTHETIC AUDIO ENGINE (Web Audio API - No External Files)
+    // --------------------------------------------------------------------------
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playSound(type) {
+      if (!audioCtx) return;
+      try {
+        const now = audioCtx.currentTime;
+        if (type === 'pistol') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(60, now + 0.12);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.13);
+        } else if (type === 'shotgun') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(30, now + 0.22);
+          gain.gain.setValueAtTime(0.5, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.23);
+        } else if (type === 'ar') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(450, now);
+          osc.frequency.exponentialRampToValueAtTime(90, now + 0.09);
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.09);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.1);
+        } else if (type === 'hit') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(180, now);
+          osc.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        } else if (type === 'pickup') {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now);
+          osc.stop(now + 0.16);
+        } else if (type === 'booyah') {
+          // Celebratory fanfare chord
+          [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0, now + i * 0.1);
+            gain.gain.linearRampToValueAtTime(0.25, now + i * 0.1 + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.8);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now + i * 0.1);
+            osc.stop(now + i * 0.1 + 0.85);
+          });
+        }
+      } catch (e) {
+        // Audio fallback
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // 4. GAME STATE VARIABLES
+    // --------------------------------------------------------------------------
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const miniCanvas = document.getElementById('miniCanvas');
+    const miniCtx = miniCanvas.getContext('2d');
+
+    let screenW = window.innerWidth;
+    let screenH = window.innerHeight;
+
+    function resizeCanvas() {
+      screenW = window.innerWidth;
+      screenH = window.innerHeight;
+      canvas.width = screenW;
+      canvas.height = screenH;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    let gameRunning = false;
+    let gameStartTime = 0;
+    let camera = { x: MAP_SIZE / 2, y: MAP_SIZE / 2 };
+
+    // Input States
+    const keys = {};
+    let mouse = { x: screenW / 2, y: screenH / 2, down: false };
+    let joyMove = { x: 0, y: 0, active: false };
+
+    // Player Object
+    let player = {
+      id: 'player',
+      name: 'You',
+      x: MAP_SIZE / 2,
+      y: MAP_SIZE / 2,
+      vx: 0,
+      vy: 0,
+      radius: 18,
+      speed: 4.8,
+      angle: 0,
+      hp: 100,
+      maxHp: 100,
+      alive: true,
+      kills: 0,
+      damageDealt: 0,
+      medkits: 1,
+      // Slots: 0=Fists, 1=Empty, 2=Empty
+      slots: [
+        { type: 'fist', ammo: Infinity },
+        null,
+        null
+      ],
+      activeSlot: 0,
+      lastShotTime: 0,
+      isReloading: false,
+      reloadEndTime: 0,
+      // Drop status
+      altitude: 700, // drops from sky
+      inParachute: true,
+      color: '#f59e0b',
+      skinColor: '#fed7aa',
+      shirtColor: '#f59e0b'
+    };
+
+    // Bot Names (Free Fire Style)
+    const BOT_NAMES = [
+      'Alok_77', 'Kelly_Dash', 'Hayato_Blade', 'Chrono_007', 'Moco_Hacker',
+      'Kla_MuayThai', 'Andrew_Armor', 'Laura_Sniper', 'Maxim_Glutton', 'Shirou_Strike'
+    ];
+    let bots = [];
+
+    // World Entities
+    let lootItems = [];
+    let bullets = [];
+    let particles = [];
+    let damageNumbers = [];
+
+    // Safe Zone (Electric Storm) System
+    let safeZone = {
+      currentX: MAP_SIZE / 2,
+      currentY: MAP_SIZE / 2,
+      currentRadius: ISLAND_RADIUS,
+      targetX: MAP_SIZE / 2,
+      targetY: MAP_SIZE / 2,
+      targetRadius: ISLAND_RADIUS,
+      shrinkSpeed: 0.25,
+      timer: 30, // seconds until next shrink
+      phase: 1,
+      isShrinking: false,
+      damageRate: 0.6 // HP lost per second outside zone
+    };
+
+    // --------------------------------------------------------------------------
+    // 5. WORLD INITIALIZATION
+    // Spawns weapons on the ground and initializes the bots with parachute drop
+    // --------------------------------------------------------------------------
+    function initGame() {
+      // Reset player
+      player.x = MAP_SIZE / 2 + (Math.random() - 0.5) * 300;
+      player.y = MAP_SIZE / 2 + (Math.random() - 0.5) * 300;
+      player.hp = 100;
+      player.alive = true;
+      player.kills = 0;
+      player.damageDealt = 0;
+      player.altitude = 800;
+      player.inParachute = true;
+      player.slots = [
+        { type: 'fist', ammo: Infinity },
+        null,
+        null
+      ];
+      player.activeSlot = 0;
+      player.medkits = 2;
+
+      // Safe Zone Reset
+      safeZone.currentX = MAP_SIZE / 2;
+      safeZone.currentY = MAP_SIZE / 2;
+      safeZone.currentRadius = ISLAND_RADIUS;
+      safeZone.targetX = MAP_SIZE / 2 + (Math.random() - 0.5) * 400;
+      safeZone.targetY = MAP_SIZE / 2 + (Math.random() - 0.5) * 400;
+      safeZone.targetRadius = 750;
+      safeZone.timer = 25;
+      safeZone.phase = 1;
+      safeZone.isShrinking = false;
+
+      // Clear Arrays
+      bullets = [];
+      particles = [];
+      damageNumbers = [];
+      lootItems = [];
+      bots = [];
+
+      // Spawn 10 Bots with parachutes
+      for (let i = 0; i < 10; i++) {
+        const ang = (i / 10) * Math.PI * 2 + Math.random() * 0.4;
+        const dist = 300 + Math.random() * 550;
+        bots.push({
+          id: 'bot_' + i,
+          name: BOT_NAMES[i],
+          x: MAP_SIZE / 2 + Math.cos(ang) * dist,
+          y: MAP_SIZE / 2 + Math.sin(ang) * dist,
+          targetX: MAP_SIZE / 2 + Math.cos(ang) * (dist + 50),
+          targetY: MAP_SIZE / 2 + Math.sin(ang) * (dist + 50),
+          vx: 0,
+          vy: 0,
+          radius: 18,
+          speed: 3.8 + Math.random() * 0.6,
+          angle: Math.random() * Math.PI * 2,
+          hp: 100,
+          maxHp: 100,
+          alive: true,
+          weapon: 'fist',
+          ammo: Infinity,
+          lastShotTime: 0,
+          altitude: 800 + Math.random() * 150,
+          inParachute: true,
+          color: '#38bdf8',
+          shirtColor: ['#ef4444', '#10b981', '#6366f1', '#ec4899', '#f97316'][i % 5],
+          aiState: 'drop', // drop, loot, engage, safe
+          targetEntity: null,
+          decisionTimer: 0
+        });
+      }
+
+      // Spawn Loot across the island (Weapons, Ammo, Medkits)
+      // High density inside buildings & around landmarks
+      BUILDINGS.forEach(b => {
+        // Inside building loot
+        spawnLoot(b.x + b.w * 0.3, b.y + b.h * 0.3, 'ar');
+        spawnLoot(b.x + b.w * 0.7, b.y + b.h * 0.7, 'shotgun');
+        spawnLoot(b.x + b.w * 0.5, b.y + b.h * 0.5, 'medkit');
+        spawnLoot(b.x + b.w * 0.2, b.y + b.h * 0.8, 'pistol');
+      });
+
+      // Wild loot scattered around the terrain
+      for (let i = 0; i < 45; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const dist = Math.random() * (ISLAND_RADIUS - 120);
+        const lx = MAP_SIZE / 2 + Math.cos(ang) * dist;
+        const ly = MAP_SIZE / 2 + Math.sin(ang) * dist;
+        const types = ['pistol', 'pistol', 'shotgun', 'shotgun', 'ar', 'ar', 'medkit'];
+        const chosen = types[Math.floor(Math.random() * types.length)];
+        spawnLoot(lx, ly, chosen);
+      }
+
+      // Update HUD
+      updateWeaponsHUD();
+      updateHealthHUD();
+      document.getElementById('drop-banner').style.display = 'block';
+      setTimeout(() => {
+        document.getElementById('drop-banner').style.display = 'none';
+      }, 5000);
+
+      addKillFeedMsg('Game started! 11 warriors dropping onto island.');
+      gameStartTime = Date.now();
+    }
+
+    function spawnLoot(x, y, type) {
+      lootItems.push({
+        x, y,
+        type,
+        name: type === 'medkit' ? 'Medkit (+50 HP)' : WEAPON_CONFIG[type].name,
+        color: type === 'medkit' ? '#10b981' : WEAPON_CONFIG[type].color,
+        radius: 16
+      });
+    }
+
+    // --------------------------------------------------------------------------
+    // 6. INPUT HANDLERS (Keyboard, Mouse, Touch Joystick & Action Buttons)
+    // --------------------------------------------------------------------------
+    window.addEventListener('keydown', e => {
+      keys[e.key.toLowerCase()] = true;
+      if (e.key === '1') selectSlot(0);
+      if (e.key === '2') selectSlot(1);
+      if (e.key === '3') selectSlot(2);
+      if (e.key.toLowerCase() === 'r') reloadWeapon();
+      if (e.key.toLowerCase() === 'f' || e.key.toLowerCase() === 'e') tryPickupLoot();
+      if (e.key.toLowerCase() === 'h') useMedkit();
+    });
+    window.addEventListener('keyup', e => {
+      keys[e.key.toLowerCase()] = false;
+    });
+
+    window.addEventListener('mousemove', e => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    });
+    window.addEventListener('mousedown', e => {
+      if (e.target.tagName === 'BUTTON' || e.target.closest('.weapon-slot') || e.target.closest('#miniCanvas')) return;
+      mouse.down = true;
+      shootActiveWeapon(player);
+    });
+    window.addEventListener('mouseup', () => {
+      mouse.down = false;
+    });
+
+    // Mobile Virtual Joystick
+    const joyZone = document.getElementById('joystick-zone');
+    const joyBase = document.getElementById('joy-base');
+    const joyKnob = document.getElementById('joy-knob');
+    let joyTouchId = null;
+
+    joyZone.addEventListener('touchstart', e => {
+      e.preventDefault();
+      const touch = e.changedTouches[0];
+      joyTouchId = touch.identifier;
+      handleJoyTouch(touch);
+    });
+    joyZone.addEventListener('touchmove', e => {
+      e.preventDefault();
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joyTouchId) {
+          handleJoyTouch(e.changedTouches[i]);
+          break;
+        }
+      }
+    });
+    const endJoy = e => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joyTouchId) {
+          joyTouchId = null;
+          joyMove.x = 0;
+          joyMove.y = 0;
+          joyMove.active = false;
+          joyKnob.style.transform = 'translate(0px, 0px)';
+          break;
+        }
+      }
+    };
+    joyZone.addEventListener('touchend', endJoy);
+    joyZone.addEventListener('touchcancel', endJoy);
+
+    function handleJoyTouch(touch) {
+      const rect = joyBase.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      let dx = touch.clientX - centerX;
+      let dy = touch.clientY - centerY;
+      const dist = Math.hypot(dx, dy);
+      const maxR = 40;
+      if (dist > maxR) {
+        dx = (dx / dist) * maxR;
+        dy = (dy / dist) * maxR;
+      }
+      joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+      joyMove.x = dx / maxR;
+      joyMove.y = dy / maxR;
+      joyMove.active = true;
+    }
+
+    // Mobile Buttons
+    const btnFire = document.getElementById('btn-fire');
+    let fireInterval = null;
+    btnFire.addEventListener('touchstart', e => {
+      e.preventDefault();
+      mouse.down = true;
+      shootActiveWeapon(player);
+      if (!fireInterval) {
+        fireInterval = setInterval(() => {
+          if (mouse.down && player.alive) shootActiveWeapon(player);
+        }, 120);
+      }
+    });
+    const endFire = () => {
+      mouse.down = false;
+      if (fireInterval) { clearInterval(fireInterval); fireInterval = null; }
+    };
+    btnFire.addEventListener('touchend', endFire);
+    btnFire.addEventListener('touchcancel', endFire);
+
+    document.getElementById('btn-reload').addEventListener('click', reloadWeapon);
+    document.getElementById('btn-heal').addEventListener('click', useMedkit);
+    document.getElementById('loot-prompt').addEventListener('click', tryPickupLoot);
+
+    // Aim via touch on the right half of the screen
+    window.addEventListener('touchstart', e => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.clientX > screenW * 0.4 && !t.target.closest('.action-buttons') && !t.target.closest('.weapons-bar')) {
+          mouse.x = t.clientX;
+          mouse.y = t.clientY;
+        }
+      }
+    }, { passive: true });
+    window.addEventListener('touchmove', e => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const t = e.changedTouches[i];
+        if (t.clientX > screenW * 0.4 && !t.target.closest('.action-buttons') && !t.target.closest('.weapons-bar')) {
+          mouse.x = t.clientX;
+          mouse.y = t.clientY;
+        }
+      }
+    }, { passive: true });
+
+    // --------------------------------------------------------------------------
+    // 7. WEAPON INVENTORY & ACTIONS
+    // --------------------------------------------------------------------------
+    function selectSlot(slotIndex) {
+      if (player.slots[slotIndex]) {
+        player.activeSlot = slotIndex;
+        player.isReloading = false;
+        updateWeaponsHUD();
+      }
+    }
+
+    function reloadWeapon() {
+      const cur = player.slots[player.activeSlot];
+      if (!cur || cur.type === 'fist') return;
+      const cfg = WEAPON_CONFIG[cur.type];
+      if (cur.ammo >= cfg.magSize || player.isReloading) return;
+
+      player.isReloading = true;
+      player.reloadEndTime = Date.now() + (cfg.reloadTime || 1500);
+      document.getElementById(`slot-${player.activeSlot}-ammo`).innerText = 'Reloading...';
+    }
+
+    function useMedkit() {
+      if (!player.alive || player.hp >= player.maxHp) return;
+      if (player.medkits > 0) {
+        player.medkits--;
+        player.hp = Math.min(player.maxHp, player.hp + 50);
+        updateHealthHUD();
+        playSound('pickup');
+        createSparks(player.x, player.y, '#10b981', 12);
+        addKillFeedMsg(`Used Medkit (+50 HP)! Remaining: ${player.medkits}`);
+      } else {
+        addKillFeedMsg('No Medkits available!');
+      }
+    }
+
+    function tryPickupLoot() {
+      if (!player.alive) return;
+      for (let i = lootItems.length - 1; i >= 0; i--) {
+        const item = lootItems[i];
+        const d = Math.hypot(player.x - item.x, player.y - item.y);
+        if (d < player.radius + item.radius + 20) {
+          if (item.type === 'medkit') {
+            player.medkits++;
+            playSound('pickup');
+            addKillFeedMsg(`Picked up Medkit (Total: ${player.medkits})`);
+            lootItems.splice(i, 1);
+            updateLootPrompt();
+            return;
+          }
+
+          // Equip into slot 1 or slot 2
+          let targetSlot = 1;
+          if (!player.slots[1]) {
+            targetSlot = 1;
+          } else if (!player.slots[2]) {
+            targetSlot = 2;
+          } else {
+            // Replace current active slot (unless slot 0 fist)
+            targetSlot = player.activeSlot === 0 ? 1 : player.activeSlot;
+          }
+
+          const cfg = WEAPON_CONFIG[item.type];
+          player.slots[targetSlot] = {
+            type: item.type,
+            ammo: cfg.magSize
+          };
+          player.activeSlot = targetSlot;
+          playSound('pickup');
+          addKillFeedMsg(`Equipped ${cfg.name}!`);
+          lootItems.splice(i, 1);
+          updateWeaponsHUD();
+          updateLootPrompt();
+          return;
+        }
+      }
+    }
+
+    function updateLootPrompt() {
+      const prompt = document.getElementById('loot-prompt');
+      if (!player.alive) { prompt.style.display = 'none'; return; }
+      
+      let nearbyLoot = null;
+      for (const item of lootItems) {
+        const d = Math.hypot(player.x - item.x, player.y - item.y);
+        if (d < player.radius + item.radius + 25) {
+          nearbyLoot = item;
+          break;
+        }
+      }
+      if (nearbyLoot) {
+        prompt.innerText = `Pick up ${nearbyLoot.name} [F / Tap]`;
+        prompt.style.display = 'block';
+      } else {
+        prompt.style.display = 'none';
+      }
+    }
+
+    function updateWeaponsHUD() {
+      for (let i = 0; i < 3; i++) {
+        const slotEl = document.getElementById(`slot-${i}`);
+        const nameEl = document.getElementById(`slot-${i}-name`);
+        const ammoEl = document.getElementById(`slot-${i}-ammo`);
+
+        slotEl.classList.toggle('active', player.activeSlot === i);
+        const item = player.slots[i];
+        if (item) {
+          const cfg = WEAPON_CONFIG[item.type];
+          nameEl.innerText = cfg.name;
+          ammoEl.innerText = item.ammo === Infinity ? '∞' : `${item.ammo} / ${cfg.magSize}`;
+        } else {
+          nameEl.innerText = 'Empty';
+          ammoEl.innerText = '--';
+        }
+      }
+    }
+
+    function updateHealthHUD() {
+      const fill = document.getElementById('health-fill');
+      const text = document.getElementById('health-text');
+      const pct = Math.max(0, Math.min(100, (player.hp / player.maxHp) * 100));
+      fill.style.width = pct + '%';
+      text.innerText = `HP ${Math.ceil(player.hp)} / ${player.maxHp}`;
+
+      if (pct > 50) {
+        fill.style.background = 'linear-gradient(90deg, #10b981, #059669)';
+      } else if (pct > 25) {
+        fill.style.background = 'linear-gradient(90deg, #f59e0b, #d97706)';
+      } else {
+        fill.style.background = 'linear-gradient(90deg, #ef4444, #b91c1c)';
+      }
+    }
+
+    function addKillFeedMsg(text) {
+      const feed = document.getElementById('kill-feed');
+      const msg = document.createElement('div');
+      msg.className = 'kill-msg';
+      msg.innerText = text;
+      feed.appendChild(msg);
+      setTimeout(() => msg.remove(), 4000);
+    }
+
+    // --------------------------------------------------------------------------
+    // 8. SHOOTING & BULLET SYSTEM
+    // --------------------------------------------------------------------------
+    function shootActiveWeapon(shooter) {
+      if (!shooter.alive || shooter.inParachute) return;
+
+      let wepType = 'fist';
+      let currentAmmo = Infinity;
+
+      if (shooter.id === 'player') {
+        if (player.isReloading) return;
+        const slot = player.slots[player.activeSlot];
+        if (!slot) return;
+        wepType = slot.type;
+        currentAmmo = slot.ammo;
+      } else {
+        wepType = shooter.weapon;
+      }
+
+      const cfg = WEAPON_CONFIG[wepType];
+      const now = Date.now();
+      if (now - shooter.lastShotTime < cfg.fireRate) return;
+      shooter.lastShotTime = now;
+
+      // Check ammo
+      if (cfg.type === 'gun' && shooter.id === 'player') {
+        if (currentAmmo <= 0) {
+          reloadWeapon();
+          return;
+        }
+        player.slots[player.activeSlot].ammo--;
+        updateWeaponsHUD();
+      }
+
+      playSound(wepType);
+
+      // Melee Punch
+      if (cfg.type === 'melee') {
+        createSparks(
+          shooter.x + Math.cos(shooter.angle) * 30,
+          shooter.y + Math.sin(shooter.angle) * 30,
+          '#fbbf24', 4
+        );
+        // Melee hit check
+        const targetList = shooter.id === 'player' ? bots : [player, ...bots.filter(b => b.id !== shooter.id)];
+        for (const target of targetList) {
+          if (!target.alive || target.inParachute) continue;
+          const dist = Math.hypot(target.x - shooter.x, target.y - shooter.y);
+          if (dist < cfg.range) {
+            const hitAng = Math.atan2(target.y - shooter.y, target.x - shooter.x);
+            const diff = Math.abs(normalizeAngle(hitAng - shooter.angle));
+            if (diff < 0.6) {
+              applyDamage(target, cfg.damage, shooter);
+              break;
+            }
+          }
+        }
+        return;
+      }
+
+      // Gun Fire: Spawn Pellets/Bullets
+      const pellets = cfg.pellets || 1;
+      for (let p = 0; p < pellets; p++) {
+        const spreadOffset = (Math.random() - 0.5) * cfg.spread;
+        const shotAngle = shooter.angle + spreadOffset;
+        bullets.push({
+          ownerId: shooter.id,
+          x: shooter.x + Math.cos(shooter.angle) * 24,
+          y: shooter.y + Math.sin(shooter.angle) * 24,
+          vx: Math.cos(shotAngle) * cfg.speed,
+          vy: Math.sin(shotAngle) * cfg.speed,
+          damage: cfg.damage,
+          distanceTraveled: 0,
+          maxDistance: cfg.range,
+          color: cfg.color
+        });
+      }
+
+      // Muzzle Flash
+      particles.push({
+        x: shooter.x + Math.cos(shooter.angle) * 28,
+        y: shooter.y + Math.sin(shooter.angle) * 28,
+        radius: 10,
+        color: '#fef08a',
+        life: 0.08,
+        maxLife: 0.08
+      });
+    }
+
+    function applyDamage(victim, amount, attacker) {
+      if (!victim.alive) return;
+      victim.hp -= amount;
+
+      // Damage number visual
+      damageNumbers.push({
+        x: victim.x + (Math.random() - 0.5) * 20,
+        y: victim.y - 20,
+        val: Math.round(amount),
+        color: amount >= 30 ? '#ef4444' : '#facc15',
+        life: 0.8
+      });
+
+      // Blood/Sparks
+      createSparks(victim.x, victim.y, '#ef4444', 6);
+      playSound('hit');
+
+      if (attacker && attacker.id === 'player') {
+        player.damageDealt += amount;
+      }
+
+      if (victim.id === 'player') {
+        updateHealthHUD();
+      }
+
+      // Death check
+      if (victim.hp <= 0) {
+        victim.alive = false;
+        victim.hp = 0;
+        createSparks(victim.x, victim.y, '#f59e0b', 20);
+
+        // Drop victim's weapon
+        const dropType = victim.id === 'player' ?
+          (player.slots[player.activeSlot]?.type || 'pistol') : victim.weapon;
+        if (dropType && dropType !== 'fist') {
+          spawnLoot(victim.x, victim.y, dropType);
+        }
+        spawnLoot(victim.x + 15, victim.y + 15, 'medkit');
+
+        // Kill feed & kill count
+        const killerName = attacker ? attacker.name : 'Safe Zone';
+        addKillFeedMsg(`💀 ${killerName} eliminated ${victim.name}!`);
+
+        if (attacker && attacker.id === 'player') {
+          player.kills++;
+          document.getElementById('badge-kills').innerText = `💀 KILLS: ${player.kills}`;
+        }
+
+        updateAliveCount();
+
+        // Check Victory / Defeat
+        if (victim.id === 'player') {
+          setTimeout(() => showDefeatScreen(), 1000);
+        } else {
+          checkVictoryCondition();
+        }
+      }
+    }
+
+    function updateAliveCount() {
+      const aliveBots = bots.filter(b => b.alive).length;
+      const totalAlive = aliveBots + (player.alive ? 1 : 0);
+      document.getElementById('badge-alive').innerText = `👥 ALIVE: ${totalAlive}`;
+    }
+
+    function checkVictoryCondition() {
+      const aliveBots = bots.filter(b => b.alive).length;
+      if (aliveBots === 0 && player.alive) {
+        setTimeout(() => showVictoryScreen(), 1200);
+      }
+    }
+
+    function showVictoryScreen() {
+      gameRunning = false;
+      playSound('booyah');
+      document.getElementById('win-kills').innerText = player.kills;
+      document.getElementById('win-damage').innerText = Math.round(player.damageDealt);
+      const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      document.getElementById('win-time').innerText = `${mins}m ${secs}s`;
+      document.getElementById('victory-modal').classList.add('active');
+    }
+
+    function showDefeatScreen() {
+      gameRunning = false;
+      const aliveBots = bots.filter(b => b.alive).length;
+      document.getElementById('lose-rank').innerText = `#${aliveBots + 2}`;
+      document.getElementById('lose-kills').innerText = player.kills;
+      document.getElementById('lose-damage').innerText = Math.round(player.damageDealt);
+      const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+      const mins = Math.floor(elapsed / 60);
+      const secs = elapsed % 60;
+      document.getElementById('lose-time').innerText = `${mins}m ${secs}s`;
+      document.getElementById('defeat-modal').classList.add('active');
+    }
+
+    // --------------------------------------------------------------------------
+    // 9. BOT AI ENGINE
+    // Parachute landing, looting, navigating to safe zone, aiming & shooting
+    // --------------------------------------------------------------------------
+    function updateBots(dt) {
+      bots.forEach(bot => {
+        if (!bot.alive) return;
+
+        // 1. Parachute Phase
+        if (bot.inParachute) {
+          bot.altitude -= 140 * dt;
+          bot.x += (Math.random() - 0.5) * 30 * dt;
+          bot.y += (Math.random() - 0.5) * 30 * dt;
+          if (bot.altitude <= 0) {
+            bot.altitude = 0;
+            bot.inParachute = false;
+            bot.aiState = 'loot';
+            createSparks(bot.x, bot.y, '#38a169', 8);
+          }
+          return;
+        }
+
+        // 2. Safe zone damage tick
+        const distFromSafeCenter = Math.hypot(bot.x - safeZone.currentX, bot.y - safeZone.currentY);
+        if (distFromSafeCenter > safeZone.currentRadius) {
+          applyDamage(bot, safeZone.damageRate * dt * 4, null);
+        }
+
+        // 3. AI Decisions
+        bot.decisionTimer -= dt;
+        if (bot.decisionTimer <= 0) {
+          bot.decisionTimer = 0.5 + Math.random() * 0.5;
+
+          // Safe zone priority: if outside or near border, run to center
+          if (distFromSafeCenter > safeZone.currentRadius - 100) {
+            bot.aiState = 'safe';
+            bot.targetX = safeZone.targetX + (Math.random() - 0.5) * 200;
+            bot.targetY = safeZone.targetY + (Math.random() - 0.5) * 200;
+          }
+          // Search for nearest enemy (Player or other Bots)
+          else {
+            let nearestEnemy = null;
+            let minDist = 400; // sight range
+
+            // Check player
+            if (player.alive && !player.inParachute) {
+              const d = Math.hypot(player.x - bot.x, player.y - bot.y);
+              if (d < minDist) {
+                minDist = d;
+                nearestEnemy = player;
+              }
+            }
+
+            // Check other bots
+            for (const other of bots) {
+              if (other.id !== bot.id && other.alive && !other.inParachute) {
+                const d = Math.hypot(other.x - bot.x, other.y - bot.y);
+                if (d < minDist) {
+                  minDist = d;
+                  nearestEnemy = other;
+                }
+              }
+            }
+
+            if (nearestEnemy) {
+              bot.aiState = 'engage';
+              bot.targetEntity = nearestEnemy;
+            } else if (bot.weapon === 'fist') {
+              bot.aiState = 'loot';
+              // Find nearest weapon loot
+              let nearestLoot = null;
+              let minLootDist = 800;
+              for (const loot of lootItems) {
+                if (loot.type !== 'medkit') {
+                  const d = Math.hypot(loot.x - bot.x, loot.y - bot.y);
+                  if (d < minLootDist) {
+                    minLootDist = d;
+                    nearestLoot = loot;
+                  }
+                }
+              }
+              if (nearestLoot) {
+                bot.targetX = nearestLoot.x;
+                bot.targetY = nearestLoot.y;
+              } else {
+                bot.targetX = bot.x + (Math.random() - 0.5) * 300;
+                bot.targetY = bot.y + (Math.random() - 0.5) * 300;
+              }
+            } else {
+              // Wander
+              bot.targetX = bot.x + (Math.random() - 0.5) * 400;
+              bot.targetY = bot.y + (Math.random() - 0.5) * 400;
+            }
+          }
+        }
+
+        // 4. Movement & Combat Execution
+        if (bot.aiState === 'engage' && bot.targetEntity && bot.targetEntity.alive) {
+          const target = bot.targetEntity;
+          const targetDist = Math.hypot(target.x - bot.x, target.y - bot.y);
+          bot.angle = Math.atan2(target.y - bot.y, target.x - bot.x);
+
+          // If too far, close in. If close enough, strafe and fire!
+          if (targetDist > 180) {
+            bot.vx = Math.cos(bot.angle) * bot.speed;
+            bot.vy = Math.sin(bot.angle) * bot.speed;
+          } else {
+            // Strafe sideways
+            const strafeAngle = bot.angle + Math.PI / 2;
+            bot.vx = Math.cos(strafeAngle) * (bot.speed * 0.5);
+            bot.vy = Math.sin(strafeAngle) * (bot.speed * 0.5);
+          }
+
+          // Shoot at target
+          if (targetDist < WEAPON_CONFIG[bot.weapon].range) {
+            shootActiveWeapon(bot);
+          }
+        } else {
+          // Move towards targetX, targetY
+          const dx = bot.targetX - bot.x;
+          const dy = bot.targetY - bot.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 20) {
+            bot.angle = Math.atan2(dy, dx);
+            bot.vx = Math.cos(bot.angle) * bot.speed;
+            bot.vy = Math.sin(bot.angle) * bot.speed;
+          } else {
+            bot.vx = 0;
+            bot.vy = 0;
+          }
+        }
+
+        // Apply bot position & collision
+        bot.x += bot.vx;
+        bot.y += bot.vy;
+        resolveCollisions(bot);
+
+        // Pick up nearby loot automatically
+        for (let i = lootItems.length - 1; i >= 0; i--) {
+          const loot = lootItems[i];
+          if (Math.hypot(bot.x - loot.x, bot.y - loot.y) < bot.radius + loot.radius) {
+            if (loot.type !== 'medkit') {
+              bot.weapon = loot.type;
+              lootItems.splice(i, 1);
+              break;
+            }
+          }
+        }
+      });
+    }
+
+    // --------------------------------------------------------------------------
+    // 10. SAFE ZONE UPDATE
+    // --------------------------------------------------------------------------
+    function updateSafeZone(dt) {
+      safeZone.timer -= dt;
+      const zoneBadge = document.getElementById('badge-zone');
+
+      if (safeZone.timer > 0) {
+        zoneBadge.innerText = `⏱️ SAFE ZONE: ${Math.ceil(safeZone.timer)}s`;
+        safeZone.isShrinking = false;
+      } else {
+        zoneBadge.innerText = `⚠️ ZONE SHRINKING!`;
+        safeZone.isShrinking = true;
+
+        // Shrink current towards target
+        if (safeZone.currentRadius > safeZone.targetRadius) {
+          safeZone.currentRadius -= safeZone.shrinkSpeed * dt * 60;
+          safeZone.currentX += (safeZone.targetX - safeZone.currentX) * 0.005;
+          safeZone.currentY += (safeZone.targetY - safeZone.currentY) * 0.005;
+        } else {
+          // Next phase
+          safeZone.phase++;
+          safeZone.timer = 20;
+          safeZone.targetRadius = Math.max(120, safeZone.currentRadius * 0.55);
+          safeZone.targetX = safeZone.currentX + (Math.random() - 0.5) * (safeZone.currentRadius - safeZone.targetRadius);
+          safeZone.targetY = safeZone.currentY + (Math.random() - 0.5) * (safeZone.currentRadius - safeZone.targetRadius);
+          safeZone.damageRate += 0.4;
+          addKillFeedMsg(`Safe Zone Phase ${safeZone.phase} shrinking!`);
+        }
+      }
+
+      // Damage player if outside zone
+      if (player.alive && !player.inParachute) {
+        const distFromCenter = Math.hypot(player.x - safeZone.currentX, player.y - safeZone.currentY);
+        if (distFromCenter > safeZone.currentRadius) {
+          applyDamage(player, safeZone.damageRate * dt * 8, null);
+        }
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // 11. PHYSICS & COLLISION RESOLUTION
+    // --------------------------------------------------------------------------
+    function resolveCollisions(entity) {
+      // Map border constraint
+      entity.x = Math.max(entity.radius + 10, Math.min(MAP_SIZE - entity.radius - 10, entity.x));
+      entity.y = Math.max(entity.radius + 10, Math.min(MAP_SIZE - entity.radius - 10, entity.y));
+
+      // Building AABB Collisions
+      for (const b of BUILDINGS) {
+        if (entity.x + entity.radius > b.x && entity.x - entity.radius < b.x + b.w &&
+            entity.y + entity.radius > b.y && entity.y - entity.radius < b.y + b.h) {
+          // Push out to nearest edge
+          const overlapL = (entity.x + entity.radius) - b.x;
+          const overlapR = (b.x + b.w) - (entity.x - entity.radius);
+          const overlapT = (entity.y + entity.radius) - b.y;
+          const overlapB = (b.y + b.h) - (entity.y - entity.radius);
+          const minOverlap = Math.min(overlapL, overlapR, overlapT, overlapB);
+
+          if (minOverlap === overlapL) entity.x -= overlapL;
+          else if (minOverlap === overlapR) entity.x += overlapR;
+          else if (minOverlap === overlapT) entity.y -= overlapT;
+          else if (minOverlap === overlapB) entity.y += overlapB;
+        }
+      }
+
+      // Nature Obstacles (Circles)
+      for (const obs of NATURE_OBSTACLES) {
+        const dx = entity.x - obs.x;
+        const dy = entity.y - obs.y;
+        const dist = Math.hypot(dx, dy);
+        const minDist = entity.radius + obs.radius;
+        if (dist < minDist && dist > 0) {
+          const push = (minDist - dist);
+          entity.x += (dx / dist) * push;
+          entity.y += (dy / dist) * push;
+        }
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // 12. MAIN LOOP & RENDERING
+    // --------------------------------------------------------------------------
+    let lastFrameTime = performance.now();
+
+    function mainGameLoop(currentTime) {
+      const dt = Math.min(0.1, (currentTime - lastFrameTime) / 1000);
+      lastFrameTime = currentTime;
+
+      if (gameRunning) {
+        // Player Parachute Descent
+        if (player.inParachute) {
+          player.altitude -= 150 * dt;
+          if (player.altitude <= 0) {
+            player.altitude = 0;
+            player.inParachute = false;
+            createSparks(player.x, player.y, '#f59e0b', 16);
+            document.getElementById('drop-banner').style.display = 'none';
+          }
+        }
+
+        // Player Movement
+        if (player.alive && !player.inParachute) {
+          let mx = 0;
+          let my = 0;
+          if (keys['w'] || keys['arrowup']) my -= 1;
+          if (keys['s'] || keys['arrowdown']) my += 1;
+          if (keys['a'] || keys['arrowleft']) mx -= 1;
+          if (keys['d'] || keys['arrowright']) mx += 1;
+
+          // Joystick override
+          if (joyMove.active) {
+            mx = joyMove.x;
+            my = joyMove.y;
+          }
+
+          const moveDist = Math.hypot(mx, my);
+          if (moveDist > 0) {
+            const speed = player.speed * (moveDist > 1 ? 1 / moveDist : 1);
+            player.vx = mx * speed;
+            player.vy = my * speed;
+          } else {
+            player.vx = 0;
+            player.vy = 0;
+          }
+
+          player.x += player.vx;
+          player.y += player.vy;
+          resolveCollisions(player);
+
+          // Aim angle (Mouse or touch)
+          const aimWorldX = camera.x + (mouse.x - screenW / 2);
+          const aimWorldY = camera.y + (mouse.y - screenH / 2);
+          player.angle = Math.atan2(aimWorldY - player.y, aimWorldX - player.x);
+
+          // Continuous Fire
+          if (mouse.down) {
+            shootActiveWeapon(player);
+          }
+
+          // Reload check
+          if (player.isReloading && Date.now() >= player.reloadEndTime) {
+            player.isReloading = false;
+            const slot = player.slots[player.activeSlot];
+            if (slot) {
+              slot.ammo = WEAPON_CONFIG[slot.type].magSize;
+              updateWeaponsHUD();
+            }
+          }
+
+          updateLootPrompt();
+        }
+
+        // Update Bots & Safe Zone
+        updateBots(dt);
+        updateSafeZone(dt);
+
+        // Update Bullets
+        for (let i = bullets.length - 1; i >= 0; i--) {
+          const b = bullets[i];
+          b.x += b.vx;
+          b.y += b.vy;
+          b.distanceTraveled += Math.hypot(b.vx, b.vy);
+
+          let bulletHit = false;
+
+          // Hit test buildings
+          for (const build of BUILDINGS) {
+            if (b.x > build.x && b.x < build.x + build.w && b.y > build.y && b.y < build.y + build.h) {
+              bulletHit = true;
+              createSparks(b.x, b.y, '#94a3b8', 3);
+              break;
+            }
+          }
+
+          // Hit test entities
+          if (!bulletHit) {
+            const targetList = b.ownerId === 'player' ? bots : [player, ...bots.filter(bot => bot.id !== b.ownerId)];
+            const attacker = b.ownerId === 'player' ? player : bots.find(bot => bot.id === b.ownerId);
+
+            for (const target of targetList) {
+              if (!target.alive || target.inParachute) continue;
+              if (Math.hypot(target.x - b.x, target.y - b.y) < target.radius + 6) {
+                bulletHit = true;
+                applyDamage(target, b.damage, attacker);
+                break;
+              }
+            }
+          }
+
+          if (bulletHit || b.distanceTraveled >= b.maxDistance) {
+            bullets.splice(i, 1);
+          }
+        }
+
+        // Update Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+          const p = particles[i];
+          p.life -= dt;
+          if (p.life <= 0) particles.splice(i, 1);
+        }
+
+        // Update Damage Numbers
+        for (let i = damageNumbers.length - 1; i >= 0; i--) {
+          const dn = damageNumbers[i];
+          dn.y -= 30 * dt;
+          dn.life -= dt;
+          if (dn.life <= 0) damageNumbers.splice(i, 1);
+        }
+
+        // Camera Smooth Follow
+        camera.x += (player.x - camera.x) * 0.1;
+        camera.y += (player.y - camera.y) * 0.1;
+      }
+
+      // Render Scene
+      renderScene();
+      renderMinimap();
+
+      requestAnimationFrame(mainGameLoop);
+    }
+
+    // --------------------------------------------------------------------------
+    // 13. GRAPHICS & RENDERING (Cartoon Island, Top-Down Free Fire Style)
+    // --------------------------------------------------------------------------
+    function renderScene() {
+      ctx.clearRect(0, 0, screenW, screenH);
+
+      ctx.save();
+      // Center camera
+      ctx.translate(screenW / 2 - camera.x, screenH / 2 - camera.y);
+
+      // 1. Water Background
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(camera.x - screenW, camera.y - screenH, screenW * 2, screenH * 2);
+
+      // 2. Island Beach & Grass
+      ctx.beginPath();
+      ctx.arc(MAP_SIZE / 2, MAP_SIZE / 2, ISLAND_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = '#fde047'; // Sand ring
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(MAP_SIZE / 2, MAP_SIZE / 2, ISLAND_RADIUS - 40, 0, Math.PI * 2);
+      ctx.fillStyle = '#22c55e'; // Vibrant green cartoon grass
+      ctx.fill();
+
+      // Dirt paths between buildings
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 36;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(1200, 1200);
+      ctx.lineTo(1200, 750);
+      ctx.lineTo(750, 750);
+      ctx.moveTo(1200, 1200);
+      ctx.lineTo(1200, 1750);
+      ctx.lineTo(1750, 1200);
+      ctx.stroke();
+
+      // 3. Render Loot Items on ground
+      lootItems.forEach(item => {
+        // Glow pedestal
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.fill();
+        ctx.strokeStyle = item.color;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Icon representation
+        ctx.fillStyle = item.color;
+        if (item.type === 'medkit') {
+          ctx.fillRect(item.x - 7, item.y - 7, 14, 14);
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(item.x - 5, item.y - 2, 10, 4);
+          ctx.fillRect(item.x - 2, item.y - 5, 4, 10);
+        } else {
+          // Cartoon gun silhouette
+          ctx.fillRect(item.x - 10, item.y - 3, 20, 6);
+          ctx.fillRect(item.x - 6, item.y + 3, 5, 7);
+        }
+
+        // Loot Name Tag
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(item.name, item.x, item.y - 18);
+      });
+
+      // 4. Render Nature (Trees & Rocks)
+      NATURE_OBSTACLES.forEach(obs => {
+        if (obs.type === 'tree') {
+          // Palm/Pine cartoon tree
+          ctx.beginPath();
+          ctx.arc(obs.x, obs.y, obs.radius, 0, Math.PI * 2);
+          ctx.fillStyle = '#15803d';
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(obs.x - 4, obs.y - 4, obs.radius * 0.7, 0, Math.PI * 2);
+          ctx.fillStyle = '#4ade80';
+          ctx.fill();
+        } else {
+          // Rock
+          ctx.beginPath();
+          ctx.arc(obs.x, obs.y, obs.radius, 0, Math.PI * 2);
+          ctx.fillStyle = '#64748b';
+          ctx.fill();
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      });
+
+      // 5. Render Buildings
+      BUILDINGS.forEach(b => {
+        // Walls & Roof
+        ctx.fillStyle = b.color;
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+
+        // Roof highlight
+        ctx.fillStyle = b.roof;
+        ctx.fillRect(b.x + 8, b.y + 8, b.w - 16, b.h - 16);
+
+        // Label on roof
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(b.label, b.x + b.w / 2, b.y + b.h / 2 + 5);
+      });
+
+      // 6. Render Bullets
+      bullets.forEach(b => {
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+        ctx.fillStyle = b.color;
+        ctx.fill();
+
+        // Tracer line
+        ctx.strokeStyle = '#fef08a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y);
+        ctx.lineTo(b.x - b.vx * 1.5, b.y - b.vy * 1.5);
+        ctx.stroke();
+      });
+
+      // 7. Render Characters (Player & Bots)
+      const allCharacters = [player, ...bots];
+      allCharacters.forEach(char => {
+        if (!char.alive) return;
+
+        ctx.save();
+        ctx.translate(char.x, char.y);
+
+        // A. Parachute Drop Rendering
+        if (char.inParachute) {
+          const scale = 1 + (char.altitude / 800) * 0.7;
+          ctx.scale(scale, scale);
+
+          // Striped Parachute Canopy
+          ctx.beginPath();
+          ctx.arc(0, -45, 34, Math.PI, 0);
+          ctx.fillStyle = char.id === 'player' ? '#f59e0b' : '#38bdf8';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Canopy stripes
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-8, -78, 16, 32);
+
+          // Ropes to character
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(-28, -45); ctx.lineTo(0, 0);
+          ctx.moveTo(28, -45);  ctx.lineTo(0, 0);
+          ctx.moveTo(0, -78);   ctx.lineTo(0, 0);
+          ctx.stroke();
+        }
+
+        // B. Character Body & Weapon
+        ctx.rotate(char.angle);
+
+        // Hands holding weapon
+        ctx.fillStyle = '#fed7aa';
+        ctx.beginPath();
+        ctx.arc(14, -10, 5, 0, Math.PI * 2); // Left hand
+        ctx.arc(14, 10, 5, 0, Math.PI * 2);  // Right hand
+        ctx.fill();
+
+        // Gun/Weapon Barrel
+        const wep = char.id === 'player' ?
+          (player.slots[player.activeSlot]?.type || 'fist') : char.weapon;
+        if (wep !== 'fist') {
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(10, -4, 20, 8);
+          ctx.fillStyle = WEAPON_CONFIG[wep].color;
+          ctx.fillRect(16, -3, 10, 6);
+        }
+
+        // Body (Circle)
+        ctx.beginPath();
+        ctx.arc(0, 0, char.radius, 0, Math.PI * 2);
+        ctx.fillStyle = char.shirtColor || '#f59e0b';
+        ctx.fill();
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Head/Cap
+        ctx.beginPath();
+        ctx.arc(0, 0, char.radius * 0.65, 0, Math.PI * 2);
+        ctx.fillStyle = '#111827';
+        ctx.fill();
+
+        ctx.restore();
+
+        // C. Overhead Name & HP Bar
+        if (!char.inParachute) {
+          ctx.fillStyle = char.id === 'player' ? '#facc15' : '#ffffff';
+          ctx.font = 'bold 11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(char.name, char.x, char.y - 28);
+
+          // Mini HP Bar
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+          ctx.fillRect(char.x - 20, char.y - 24, 40, 5);
+          ctx.fillStyle = char.hp > 50 ? '#22c55e' : (char.hp > 25 ? '#f59e0b' : '#ef4444');
+          ctx.fillRect(char.x - 20, char.y - 24, (char.hp / char.maxHp) * 40, 5);
+        }
+      });
+
+      // 8. Render Particles & Sparks
+      particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+      });
+
+      // 9. Render Floating Damage Numbers
+      damageNumbers.forEach(dn => {
+        ctx.fillStyle = dn.color;
+        ctx.font = '900 16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(`-${dn.val}`, dn.x, dn.y);
+      });
+
+      // 10. SAFE ZONE & DANGER STORM RENDERING
+      // A. Next Safe Zone Outline (White Dashed Circle)
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([12, 10]);
+      ctx.beginPath();
+      ctx.arc(safeZone.targetX, safeZone.targetY, safeZone.targetRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // B. Current Shrinking Storm (Electric Blue Zone)
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(safeZone.currentX, safeZone.currentY, safeZone.currentRadius, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Outer Danger Tint
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, MAP_SIZE, MAP_SIZE);
+      ctx.arc(safeZone.currentX, safeZone.currentY, safeZone.currentRadius, 0, Math.PI * 2, true);
+      ctx.fillStyle = 'rgba(30, 58, 138, 0.35)'; // Blue danger zone tint
+      ctx.fill();
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    function createSparks(x, y, color, count) {
+      for (let i = 0; i < count; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = 10 + Math.random() * 40;
+        particles.push({
+          x: x + Math.cos(ang) * 6,
+          y: y + Math.sin(ang) * 6,
+          radius: 2 + Math.random() * 2,
+          color,
+          life: 0.2 + Math.random() * 0.2,
+          maxLife: 0.3
+        });
+      }
+    }
+
+    function normalizeAngle(ang) {
+      while (ang > Math.PI) ang -= Math.PI * 2;
+      while (ang < -Math.PI) ang += Math.PI * 2;
+      return ang;
+    }
+
+    // --------------------------------------------------------------------------
+    // 14. MINIMAP RENDERER
+    // --------------------------------------------------------------------------
+    function renderMinimap() {
+      miniCtx.clearRect(0, 0, 130, 130);
+
+      const scale = 130 / MAP_SIZE;
+
+      // Island ground
+      miniCtx.beginPath();
+      miniCtx.arc(130 / 2, 130 / 2, ISLAND_RADIUS * scale, 0, Math.PI * 2);
+      miniCtx.fillStyle = '#16a34a';
+      miniCtx.fill();
+
+      // Buildings
+      miniCtx.fillStyle = '#cbd5e1';
+      BUILDINGS.forEach(b => {
+        miniCtx.fillRect(b.x * scale, b.y * scale, b.w * scale, b.h * scale);
+      });
+
+      // Target Safe Zone (White)
+      miniCtx.strokeStyle = '#ffffff';
+      miniCtx.lineWidth = 1.5;
+      miniCtx.beginPath();
+      miniCtx.arc(safeZone.targetX * scale, safeZone.targetY * scale, safeZone.targetRadius * scale, 0, Math.PI * 2);
+      miniCtx.stroke();
+
+      // Current Safe Zone (Blue)
+      miniCtx.strokeStyle = '#38bdf8';
+      miniCtx.lineWidth = 2;
+      miniCtx.beginPath();
+      miniCtx.arc(safeZone.currentX * scale, safeZone.currentY * scale, safeZone.currentRadius * scale, 0, Math.PI * 2);
+      miniCtx.stroke();
+
+      // Alive Bots (Red dots)
+      miniCtx.fillStyle = '#ef4444';
+      bots.forEach(b => {
+        if (b.alive) {
+          miniCtx.beginPath();
+          miniCtx.arc(b.x * scale, b.y * scale, 2.5, 0, Math.PI * 2);
+          miniCtx.fill();
+        }
+      });
+
+      // Player (Yellow Arrow/Dot)
+      if (player.alive) {
+        miniCtx.fillStyle = '#facc15';
+        miniCtx.beginPath();
+        miniCtx.arc(player.x * scale, player.y * scale, 4, 0, Math.PI * 2);
+        miniCtx.fill();
+        miniCtx.strokeStyle = '#111';
+        miniCtx.lineWidth = 1;
+        miniCtx.stroke();
+      }
+    }
+
+    // --------------------------------------------------------------------------
+    // 15. GAME START & EXPORT FUNCTIONS
+    // --------------------------------------------------------------------------
+    function startGame() {
+      initAudio();
+      document.getElementById('start-screen').style.display = 'none';
+      gameRunning = true;
+      initGame();
+    }
+
+    function resetGame() {
+      document.getElementById('victory-modal').classList.remove('active');
+      document.getElementById('defeat-modal').classList.remove('active');
+      gameRunning = true;
+      initGame();
+    }
+
+    // Standalone single HTML file download helper
+    function downloadSingleFile() {
+      const htmlContent = '<!doctype html>\n' + document.documentElement.outerHTML;
+      const blob = new Blob([htmlContent], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'FreeFire2D_BattleRoyale.html';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Kick off animation loop
+    requestAnimationFrame(mainGameLoop);
+  </script>
+</body>
+</html>
